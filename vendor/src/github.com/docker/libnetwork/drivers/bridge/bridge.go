@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/Sirupsen/logrus"
-	bri "github.com/docker/libcontainer/netlink"
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/ipallocator"
 	"github.com/docker/libnetwork/iptables"
@@ -400,17 +399,27 @@ func (d *driver) DeleteNetwork(nid types.UUID) error {
 }
 
 func addToBridge(ifaceName, bridgeName string) error {
-	iface, err := net.InterfaceByName(ifaceName)
+	link, err := netlink.LinkByName(ifaceName)
 	if err != nil {
 		return fmt.Errorf("could not find interface %s: %v", ifaceName, err)
 	}
 
-	master, err := net.InterfaceByName(bridgeName)
-	if err != nil {
-		return fmt.Errorf("could not find bridge %s: %v", bridgeName, err)
-	}
+	if err = netlink.LinkSetMaster(link,
+		&netlink.Bridge{LinkAttrs: netlink.LinkAttrs{Name: bridgeName}}); err != nil {
+		logrus.Debugf("Failed to add %s to bridge via netlink.Trying ioctl: %v", ifaceName, err)
+		iface, err := net.InterfaceByName(ifaceName)
+		if err != nil {
+			return fmt.Errorf("could not find network interface %s: %v", ifaceName, err)
+		}
 
-	return bri.AddToBridge(iface, master)
+		master, err := net.InterfaceByName(bridgeName)
+		if err != nil {
+			return fmt.Errorf("could not find bridge %s: %v", bridgeName, err)
+		}
+
+		return ioctlAddToBridge(iface, master)
+	}
+	return nil
 }
 
 func (d *driver) CreateEndpoint(nid, eid types.UUID, epInfo driverapi.EndpointInfo, epOptions map[string]interface{}) error {
