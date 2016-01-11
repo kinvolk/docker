@@ -354,6 +354,16 @@ func (d *Driver) Get(id string, mountLabel string) (string, error) {
 		return mergedDir, nil
 	}
 
+	if err = label.Relabel(upperDir, mountLabel, false); err != nil {
+		return "", fmt.Errorf("Error relabeling upper directory: %v", err)
+	}
+	if err = label.Relabel(workDir, mountLabel, false); err != nil {
+		return "", fmt.Errorf("Error relabeling work directory: %v", err)
+	}
+	if err = label.Relabel(mergedDir, mountLabel, false); err != nil {
+		return "", fmt.Errorf("Error relabeling merged directory: %v", err)
+	}
+
 	opts := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowerDir, upperDir, workDir)
 
 	// if it's mounted already, just return
