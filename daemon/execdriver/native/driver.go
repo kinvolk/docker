@@ -74,6 +74,9 @@ func NewDriver(root string, options []string) (*Driver, error) {
 	// this makes sure there are no breaking changes to people
 	// who upgrade from versions without native.cgroupdriver opt
 	cgm := libcontainer.Cgroupfs
+	if systemd.UseSystemd() {
+		cgm = libcontainer.SystemdCgroups
+	}
 
 	// parse the options
 	for _, option := range options {
