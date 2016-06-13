@@ -370,9 +370,6 @@ func (d *Driver) Get(id string, mountLabel string) (string, error) {
 	if err = label.Relabel(workDir, mountLabel, false); err != nil {
 		return "", fmt.Errorf("Error relabeling work directory: %v", err)
 	}
-	if err = label.Relabel(mergedDir, mountLabel, false); err != nil {
-		return "", fmt.Errorf("Error relabeling merged directory: %v", err)
-	}
 
 	opts := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowerDir, upperDir, workDir)
 	if err := syscall.Mount("overlay", mergedDir, "overlay", 0, label.FormatMountLabel(opts, mountLabel)); err != nil {
