@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -81,6 +82,9 @@ func (p *process) sendCloseStdin() error {
 		Pid:        p.friendlyName,
 		CloseStdin: true,
 	})
+	if err != nil && (strings.Contains(err.Error(), "container not found") || strings.Contains(err.Error(), "process not found")) {
+		return nil
+	}
 	return err
 }
 
