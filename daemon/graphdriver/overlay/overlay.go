@@ -19,7 +19,6 @@ import (
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/fsutils"
 	"github.com/docker/docker/pkg/idtools"
-	"github.com/docker/docker/pkg/mount"
 	"github.com/opencontainers/runc/libcontainer/label"
 )
 
@@ -135,10 +134,6 @@ func Init(home string, options []string, uidMaps, gidMaps []idtools.IDMap) (grap
 		return nil, err
 	}
 
-	if err := mount.MakePrivate(home); err != nil {
-		return nil, err
-	}
-
 	supportsDType, err := fsutils.SupportsDType(home)
 	if err != nil {
 		return nil, err
@@ -222,11 +217,10 @@ func (d *Driver) GetMetadata(id string) (map[string]string, error) {
 	return metadata, nil
 }
 
-// Cleanup any state created by overlay which should be cleaned when daemon
-// is being shutdown. For now, we just have to unmount the bind mounted
-// we had created.
+// Cleanup simply returns nil and do not change the existing filesystem.
+// This is required to satisfy the graphdriver.Driver interface.
 func (d *Driver) Cleanup() error {
-	return mount.Unmount(d.home)
+	return nil
 }
 
 // CreateReadWrite creates a layer that is writable for use as a container
