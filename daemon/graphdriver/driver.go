@@ -154,6 +154,29 @@ func getBuiltinDriver(name, home string, options []string, uidMaps, gidMaps []id
 	return nil, ErrNotSupported
 }
 
+func multipleConfiguredDrivers(root string, intendedDriver string, detectedDrivers map[string]bool) error {
+	// abort starting when there are other prior configured drivers
+	// to ensure the user explicitly selects the driver to load
+	if len(detectedDrivers)-1 > 0 {
+		var driversSlice []string
+		for name := range detectedDrivers {
+			driversSlice = append(driversSlice, name)
+		}
+
+		return fmt.Errorf("%q contains several valid graphdrivers: %s; Please cleanup or explicitly choose storage driver (-s <DRIVER>)", root, strings.Join(driversSlice, ", "))
+	}
+
+	_, detectedIntendedDriver := detectedDrivers[intendedDriver]
+	if len(detectedDrivers) == 1 && !detectedIntendedDriver {
+		var existingDriver string
+		for name := range detectedDrivers {
+			existingDriver = name
+		}
+		return fmt.Errorf("%q contains driver %s, but autodetection picked %s; Please cleanup or explicitly choose storage driver (-s <DRIVER>)", root, existingDriver, intendedDriver)
+	}
+	return nil
+}
+
 // New creates the driver and initializes it at the specified root.
 func New(root string, name string, options []string, uidMaps, gidMaps []idtools.IDMap) (Driver, error) {
 	if name != "" {
@@ -181,15 +204,8 @@ func New(root string, name string, options []string, uidMaps, gidMaps []idtools.
 				return nil, err
 			}
 
-			// abort starting when there are other prior configured drivers
-			// to ensure the user explicitly selects the driver to load
-			if len(driversMap)-1 > 0 {
-				var driversSlice []string
-				for name := range driversMap {
-					driversSlice = append(driversSlice, name)
-				}
-
-				return nil, fmt.Errorf("%q contains several valid graphdrivers: %s; Please cleanup or explicitly choose storage driver (-s <DRIVER>)", root, strings.Join(driversSlice, ", "))
+			if err := multipleConfiguredDrivers(root, name, driversMap); err != nil {
+				return nil, err
 			}
 
 			logrus.Infof("[graphdriver] using prior storage driver %q", name)
@@ -206,6 +222,9 @@ func New(root string, name string, options []string, uidMaps, gidMaps []idtools.
 			}
 			return nil, err
 		}
+		if err := multipleConfiguredDrivers(root, name, driversMap); err != nil {
+			return nil, err
+		}
 		return driver, nil
 	}
 
@@ -216,6 +235,9 @@ func New(root string, name string, options []string, uidMaps, gidMaps []idtools.
 			if isDriverNotSupported(err) {
 				continue
 			}
+			return nil, err
+		}
+		if err := multipleConfiguredDrivers(root, name, driversMap); err != nil {
 			return nil, err
 		}
 		return driver, nil
